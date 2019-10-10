@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "rollup -c",
+    "dev": "rollup -c -w",
     "start": "node dist/bundle.js"
   },
   "keywords": [],
@@ -14,5 +15,8 @@
     "eslint": "^6.5.1",
     "eslint-config-google": "^0.14.0",
     "rollup": "^1.23.1"
+  },
+  "dependencies": {
+    "ramda": "^0.26.1"
   }
 }

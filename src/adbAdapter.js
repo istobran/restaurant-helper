@@ -1,4 +1,15 @@
-const { exec } = require('child_process');
+import { exec } from 'child_process';
+import { EOL } from 'os';
+import {
+  pipe,
+  split,
+  filter,
+  complement,
+  anyPass,
+  isEmpty,
+  includes,
+  map,
+} from 'ramda';
 
 export default class AdbAdapter {
   constructor() {
@@ -10,25 +21,23 @@ export default class AdbAdapter {
    * @return {Promise<Array>}
    */
   async getDevices() {
-    const result = await this.exec('devices');
-    return result.stdout.split('\r\n')
-      .filter(item => {
-        return item.indexOf('List of devices attached') === -1
-      })
-      .map(item => {
-        const [id, state] = item.split('\t');
-        return { id, state };
-      });
+    const stdout = await this.exec('devices');
+    const arrToObj = ([id, state]) => ({ id, state });
+    return pipe(
+      split(EOL),
+      filter(complement(anyPass([isEmpty, includes('List of devices attached')]))),
+      map(pipe(split('\t'), arrToObj)),
+    )(stdout);
   }
 
   /**
    * 模拟用户点击
    * @param {Number}  x   X 轴坐标
    * @param {Number}  y   Y 轴坐标
-   * @returns {Promise<void>}
+   * @return {Promise<String|Buffer, String|Buffer>}
    */
   tap(x, y) {
-    return this.exec(`shell input tap ${x} ${y}`)
+    return this.shell(`input tap ${x} ${y}`)
   }
 
   /**
@@ -40,17 +49,57 @@ export default class AdbAdapter {
    * @param {Number}  timeout   拖动过程延迟
    */
   swipe(startX, startY, endX, endY, timeout) {
-    return this.exec(`shell input swipe ${startX} ${startY} ${endX} ${endY} ${timeout}`)
+    return this.shell(`input swipe ${startX} ${startY} ${endX} ${endY} ${timeout}`)
   }
 
   /**
-   * 执行 shell 命令
-   * @param   {String}  cmd   待执行的命令
-   * @return  {Promise<string, string>}
+   * 生成手机屏幕截图快照
+   * @param   {String}  path    屏幕快照存放的绝对路径
+   * @return {Promise<String|Buffer, String|Buffer>}
    */
-  exec(cmd) {
+  dumpScreen(path = '/sdcard/screen.dump') {
+    return this.shell(`screencap ${path}`)
+  }
+
+  /**
+   * 读取屏幕快照中的像素点值
+   * @param   {String}  path    屏幕快照存放的绝对路径
+   * @param   {Number}  offset  偏移值
+   * @return {Promise<String|Buffer, String|Buffer>}
+   */
+  readBuffer(path = '/sdcard/screen.dump', offset) {
+    return this.shell(`dd if='${path}' bs=4 count=1 skip=${offset} 2>/dev/null`, 'buffer');
+  }
+
+  /**
+   * 从屏幕截图快照中获取坐标颜色
+   * @param {Number}  x   X 轴坐标
+   * @param {Number}  y   Y 轴坐标
+   */
+  async getColorFromDump(x, y) {
+    const path = '/data/local/tmp/screen.dump';
+    await this.dumpScreen(path);
+    const buffer = await this.readBuffer(path, 1080 * y + x + 3);
+    this.shell(`rm -f ${path}`);
+    const [red, green, blue, alpha] = buffer;
+    const hex = '#' + [red, green, blue, alpha]
+      .map(color => color.toString(16))
+      .join('');
+    return { red, green, blue, alpha, hex };
+  }
+
+  /**
+   * 执行 adb 命令
+   * @param   {String}  cmd       待执行的命令
+   * @param   {String}  encoding  返回数据流的格式
+   * @return  {Promise<String|Buffer, String|Buffer>}
+   */
+  exec(cmd, encoding = 'utf8') {
     return new Promise((resolve, reject) => {
-      exec(`${this.prefix} ${cmd}`, (error, stdout, stderr) => {
+      exec(
+        `${this.prefix} ${cmd}`,
+        { encoding, maxBuffer: 128 * 1024 * 1024 },
+        (error, stdout, stderr) => {
         if (error) {
           reject(error);
         } else {
@@ -58,5 +107,15 @@ export default class AdbAdapter {
         }
       })
     })
+  }
+
+  /**
+   * 执行 adb shell 命令
+   * @param   {String}  cmd   待执行的命令
+   * @param   {String}  encoding  返回数据流的格式
+   * @return  {Promise<String|Buffer, String|Buffer>}
+   */
+  shell(cmd, encoding = 'utf8') {
+    return this.exec(`shell "${cmd}"`, encoding);
   }
 };
