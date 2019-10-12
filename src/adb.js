@@ -51,9 +51,10 @@ function shell(cmd, encoding = 'utf8') {
 export async function getDevices() {
   const stdout = await adb('devices');
   const arrToObj = ([id, state]) => ({ id, state });
+  const invalidLine = anyPass([isEmpty, includes('List of devices attached')]);
   return pipe(
     split(EOL),
-    filter(complement(anyPass([isEmpty, includes('List of devices attached')]))),
+    filter(complement(invalidLine)),
     map(pipe(split('\t'), arrToObj)),
   )(stdout);
 }

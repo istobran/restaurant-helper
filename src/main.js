@@ -1,8 +1,8 @@
-import { collectFishes, publicize } from './action';
+import { screenPoll, publicize } from './action';
 
 function main() {
-  // publicize();
-  collectFishes();
+  publicize();
+  screenPoll();
 }
 
 main();

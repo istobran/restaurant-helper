@@ -1,7 +1,7 @@
 import { rgb2lab } from 'rgb-lab';
 
 export default class Color {
-  constructor(r, g, b, a) {
+  constructor(r, g, b, a = 255) {
     this._r = r;
     this._g = g;
     this._b = b;

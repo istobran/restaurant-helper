@@ -1,76 +1,82 @@
 import { deltaE } from 'rgb-lab';
+import { addIndex, is, map, pipe, reduce, flip, then } from "ramda";
 import { cleanDump, dumpScreen, tap } from './adb';
 import { randomSleep, fuzzyCoord, shuffle } from "./fuzzy";
-import { BTN_RESTAURANT_FISHES, BTN_SPREAD, COLOR_FISHES } from "./constant";
+import {
+  BTN_RESTAURANT_FISHES,
+  BTN_RESTAURANT_ORDERS,
+  BTN_SPREAD,
+  COLOR_FISHES,
+  COLOR_ORDER,
+  MAGIC_ORDER_OFFSET
+} from "./constant";
 import { getColorFromDump } from "./color";
 import Color from "./classes/color.class";
+import Point from "./classes/point.class";
 
 /**
  * 执行宣传
  * @returns {Promise<void>}
  */
 export async function publicize() {
-  do {
+  while (true) {
     tap(fuzzyCoord(BTN_SPREAD, 80));
     await randomSleep();
-  } while (true);
-}
-
-/**
- * 获取颜色的欧式距离
- * @param   {Array<Color>}   arr    需要计算最小距离的颜色数组
- * @param   {Color}          color  待计算的颜色
- * @returns {Promise<void>}
- */
-function getDeltaE(arr, color) {
-  return arr.reduce((min, target) => {
-    const value = deltaE(target, color.lab);
-    return value < min ? value : min;
-  }, Infinity);
-}
-
-
-/**
- * 检测某点上是否有鱼干
- * @param   {Point}   point   待检查的坐标点
- * @param   {Number}  index   遍历顺序
- * @returns {Promise<Boolean>}
- */
-async function checkFishExist(point, index) {
-  try {
-    const color = await getColorFromDump(fuzzyCoord(point, 30));
-    const distance = getDeltaE(COLOR_FISHES.map(p => p.lab), color);
-    console.log(`获取第 ${index} 位置的颜色与鱼干的 CIE94 色差`, color.hex, distance);
-    return distance < 10;
-  } catch (err) {
-    return false;
   }
 }
 
 /**
- * 模拟点击收集鱼干
+ * 检查对应点上的颜色并点击
+ * @param   {Color}   target  目标颜色值
+ * @param   {Point}   offset  匹配时的坐标偏移
  * @param   {Point}   point   待检查的坐标点
  * @param   {Number}  index   遍历顺序
- * @return  {Promise<void>}
+ * @returns {Promise<void>}
  */
-async function tapFish(point, index) {
-  const exist = await checkFishExist(point, index);
-  if (exist) await tap(fuzzyCoord(point, 30));
+async function tapColorPoint(target, offset = null, point, index) {
+  try {
+    const coord = is(Point, offset)
+      ? new Point(point.x + offset.x, point.y + offset.y)
+      : fuzzyCoord(point, 10);
+    const color = await getColorFromDump(coord);
+    console.log(`第 ${index} 位置的颜色`, point, color);
+    if (deltaE(target.lab, color.lab) < 5) {
+      await tap(fuzzyCoord(point, 10));
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 /**
- * 收集小鱼干
- * @returns {Promise<void>}
+ * 匹配一组颜色并执行点击
+ * @param   {Array}   colorArr    待匹配的颜色列表
+ * @param   {Color}   color       目标颜色值
+ * @param   {Point}   offset      匹配时的坐标偏移
+ * @returns {Promise<*>}
  */
-export async function collectFishes() {
-  do {
+async function pollColorList(colorArr, color, offset = null) {
+  const buildPromFunc = (...args) => tapColorPoint.bind(null, color, offset, ...args);
+  return await pipe(
+    addIndex(map)(buildPromFunc), // 生成异步函数数组
+    shuffle, // 打乱数组顺序
+    reduce(flip(then), Promise.resolve()), // 同步依次执行所有 promise
+  )(colorArr);
+}
+
+/**
+ * 执行屏幕轮询检测
+ * @return {Promise<void>}
+ */
+export async function screenPoll() {
+  while (true) {
     await dumpScreen();
-    const fns = BTN_RESTAURANT_FISHES
-      .map((...args) => tapFish.bind(null, ...args));
-    shuffle(fns); // 打乱数组顺序
-    await fns.reduce((chain, fn) => chain.then(fn), Promise.resolve());
-    console.log('=========================');
+    console.log('=======FISH=======');
+    await pollColorList(BTN_RESTAURANT_FISHES, COLOR_FISHES); // 收集小鱼干
+    console.log('======ORDERS======');
+    await pollColorList(BTN_RESTAURANT_ORDERS, COLOR_ORDER, MAGIC_ORDER_OFFSET); // 帮动物点餐
+    console.log('=======END========');
     await cleanDump();
     await randomSleep();
-  } while (true);
+  }
 }

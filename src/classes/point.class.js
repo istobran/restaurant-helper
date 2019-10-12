@@ -20,3 +20,4 @@ export default class Point {
     this._y = value;
   }
 }
+
