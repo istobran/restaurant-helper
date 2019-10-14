@@ -20,7 +20,7 @@ export function randomSleep(delay = 100, range = 200) {
 /**
  * 根据半径给用户点击的坐标产生一个新的随机偏移坐标
  * @param   {Point}   point   原始坐标点
- * @param   {Number}  range   模糊半径
+ * @param   {Number}  range   偏移半径上限
  * @return  {Point}           随机偏移后的新坐标
  */
 export function fuzzyCoord({ x, y }, range) {
@@ -34,7 +34,7 @@ export function fuzzyCoord({ x, y }, range) {
  * 借助 Fisher–Yates shuffle 洗牌算法打乱数组
  * https://www.zhihu.com/question/68330851
  * @param   {Array}   arr     待打乱的数组
- * @return  {Array}           打乱后的新数组
+ * @return  {Array}           打乱后的数组
  */
 export function shuffle(arr) {
   for (let i = 1; i < arr.length; i++) {
