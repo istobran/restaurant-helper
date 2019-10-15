@@ -5,23 +5,45 @@ import { randomSleep, fuzzyCoord, shuffle } from "./fuzzy";
 import {
   BTN_RESTAURANT_FISHES,
   BTN_RESTAURANT_ORDERS,
-  BTN_SPREAD,
+  BTN_SPREAD, BTN_SPREAD_PICK,
   COLOR_FISHES,
-  COLOR_ORDER,
+  COLOR_ORDER, COLOR_SPREAD,
   MAGIC_ORDER_OFFSET
 } from "./constant";
 import { getColorFromDump } from "./color";
 import Color from "./classes/color.class";
 import Point from "./classes/point.class";
+import { debug, info, warn, error } from "./logger";
+
+/**
+ * 判断是否可以点击宣传按钮
+ * @returns {Promise<Boolean>}
+ */
+async function isPublicizeAvailable() {
+  try {
+    const color = await getColorFromDump(BTN_SPREAD_PICK);
+    if (deltaE(COLOR_SPREAD.lab, color.lab) < 3) {
+      return true;
+    }
+  } catch (err) {
+    warn('获取宣传按钮位置颜色失败', err.message);
+  }
+  return false;
+}
 
 /**
  * 执行宣传
  * @returns {Promise<void>}
  */
 export async function publicize() {
+  info('正在启动自动宣传功能...');
+  let counter = 0;
   while (true) {
-    tap(fuzzyCoord(BTN_SPREAD, 80));
-    await randomSleep();
+    if (counter % 5 || await isPublicizeAvailable()) { // 每点击屏幕 5 次判断一次颜色
+      tap(fuzzyCoord(BTN_SPREAD, 80));
+      counter++;
+    }
+    await randomSleep(200, 150);
   }
 }
 
@@ -39,12 +61,13 @@ async function tapColorPoint(target, offset = null, point, index) {
       ? new Point(point.x + offset.x, point.y + offset.y)
       : fuzzyCoord(point, 10);
     const color = await getColorFromDump(coord);
-    console.log(`第 ${index} 位置的颜色`, point, color);
-    if (deltaE(target.lab, color.lab) < 5) {
+    debug(`第 ${index} 位置的颜色`, point, color);
+    if (deltaE(target.lab, color.lab) < 3) {
+      info(`第 ${index} 位置发现了目标，正在执行点击`, point, color);
       await tap(fuzzyCoord(point, 10));
     }
   } catch (err) {
-    console.error(err);
+    error(err.message);
   }
 }
 
@@ -69,14 +92,13 @@ async function pollColorList(colorArr, color, offset = null) {
  * @return {Promise<void>}
  */
 export async function screenPoll() {
+  info('正在启动自动收集功能...');
   while (true) {
     await dumpScreen();
-    console.log('=======FISH=======');
+    debug('===============正在查找小鱼干===============');
     await pollColorList(BTN_RESTAURANT_FISHES, COLOR_FISHES); // 收集小鱼干
-    console.log('======ORDERS======');
+    debug('===========正在查找是否有动物点餐============');
     await pollColorList(BTN_RESTAURANT_ORDERS, COLOR_ORDER, MAGIC_ORDER_OFFSET); // 帮动物点餐
-    console.log('=======END========');
-    await cleanDump();
     await randomSleep();
   }
 }

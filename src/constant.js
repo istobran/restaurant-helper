@@ -4,6 +4,12 @@ import Color from "./classes/color.class";
 // 宣传按钮
 const BTN_SPREAD = new Point(958, 1760);
 
+// 宣传按钮的取色位置
+const BTN_SPREAD_PICK = new Point(958, 1850);
+
+// 宣传按钮的颜色
+const COLOR_SPREAD = new Color(213, 179, 170);
+
 // 餐厅鱼干的位置
 const BTN_RESTAURANT_FISHES = Object.freeze([
   new Point(166, 778),
@@ -38,6 +44,8 @@ const COLOR_ORDER = new Color(249, 245, 232);
 
 export {
   BTN_SPREAD,
+  BTN_SPREAD_PICK,
+  COLOR_SPREAD,
   BTN_RESTAURANT_FISHES,
   COLOR_FISHES,
   BTN_RESTAURANT_ORDERS,

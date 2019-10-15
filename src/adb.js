@@ -10,6 +10,7 @@ import {
   includes,
   map,
 } from 'ramda';
+import { debug } from "./logger";
 
 const dumpScreenPath = '/sdcard/screen.dump';
 
@@ -65,6 +66,7 @@ export async function getDevices() {
  * @return  {Promise<String|Buffer, String|Buffer>}
  */
 export function tap({ x, y }) {
+  debug('用户点击了', x, y);
   return shell(`input tap ${x} ${y}`)
 }
 
