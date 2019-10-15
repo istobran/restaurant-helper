@@ -1,7 +1,7 @@
 import { deltaE } from 'rgb-lab';
 import { addIndex, is, map, pipe, reduce, flip, then } from "ramda";
-import { cleanDump, dumpScreen, tap } from './adb';
-import { randomSleep, fuzzyCoord, shuffle } from "./fuzzy";
+import { dumpScreen, tap } from './adb';
+import { randomSleep, randomOffset, shuffle } from "./fuzzy";
 import {
   BTN_RESTAURANT_FISHES,
   BTN_RESTAURANT_ORDERS,
@@ -40,7 +40,7 @@ export async function publicize() {
   let counter = 0;
   while (true) {
     if (counter % 5 || await isPublicizeAvailable()) { // 每点击屏幕 5 次判断一次颜色
-      tap(fuzzyCoord(BTN_SPREAD, 80));
+      tap(randomOffset(BTN_SPREAD, 80));
       counter++;
     }
     await randomSleep(200, 150);
@@ -59,12 +59,12 @@ async function tapColorPoint(target, offset = null, point, index) {
   try {
     const coord = is(Point, offset)
       ? new Point(point.x + offset.x, point.y + offset.y)
-      : fuzzyCoord(point, 10);
+      : randomOffset(point, 10);
     const color = await getColorFromDump(coord);
     debug(`第 ${index} 位置的颜色`, point, color);
     if (deltaE(target.lab, color.lab) < 3) {
       info(`第 ${index} 位置发现了目标，正在执行点击`, point, color);
-      await tap(fuzzyCoord(point, 10));
+      await tap(randomOffset(point, 10));
     }
   } catch (err) {
     error(err.message);

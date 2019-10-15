@@ -23,7 +23,7 @@ export function randomSleep(delay = 100, range = 200) {
  * @param   {Number}  range   偏移半径上限
  * @return  {Point}           随机偏移后的新坐标
  */
-export function fuzzyCoord({ x, y }, range) {
+export function randomOffset({ x, y }, range) {
   const fuzzyRange = multiply(random(), range);
   const angle = multiply(random(), 2 * PI);
   const f = (fn, orig) => add(compose(ceil, multiply(fuzzyRange), applyTo(angle))(fn), orig);
